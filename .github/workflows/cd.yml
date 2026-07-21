@@ -1,0 +1,76 @@
+name: cd
+
+# test -> build -> push to ECR -> (approval gate) -> helm upgrade.
+# Auth is GitHub OIDC -> AWS IAM role; no long-lived AWS keys.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  id-token: write # request the OIDC token
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  CLUSTER_NAME: agent-fleet
+  IMAGE_PREFIX: agent-fleet
+
+jobs:
+  build-push:
+    name: build & push (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - { service: governance-mcp, context: services/governance-mcp }
+          - { service: scheduler, context: services/scheduler }
+          - { service: ticket-to-pr-runner, context: services/ticket-to-pr-runner }
+          - { service: notify-bridge, context: services/notify-bridge-go }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: build & push
+        run: |
+          TAG="${GITHUB_SHA::12}"
+          IMAGE="${{ steps.ecr.outputs.registry }}/${IMAGE_PREFIX}/${{ matrix.service }}:${TAG}"
+          docker build -t "$IMAGE" "${{ matrix.context }}"
+          docker push "$IMAGE"
+
+  deploy:
+    name: helm upgrade (gated)
+    needs: build-push
+    runs-on: ubuntu-latest
+    # The approval gate: configure "Required reviewers" on this GitHub Environment. The rollout
+    # pauses here until a human approves — propose-then-approve, applied to CD.
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: azure/setup-helm@v4
+      - name: kubeconfig
+        run: aws eks update-kubeconfig --name "$CLUSTER_NAME" --region "$AWS_REGION"
+      - name: helm upgrade
+        run: |
+          TAG="${GITHUB_SHA::12}"
+          helm upgrade --install agent-fleet charts/agent-fleet \
+            -n agent-fleet --create-namespace \
+            --set image.registry=${{ steps.ecr.outputs.registry }} \
+            --set services.governance-mcp.tag="$TAG" \
+            --set services.scheduler.tag="$TAG" \
+            --set services.ticket-to-pr-runner.tag="$TAG" \
+            --set services.notify-bridge.tag="$TAG" \
+            -f deploy/values.production.yaml \
+            --wait --timeout 5m
+      - name: rollout status
+        run: kubectl -n agent-fleet rollout status deploy --timeout 3m

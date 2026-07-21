@@ -1,0 +1,103 @@
+# Default-deny for the whole namespace, then explicit allow rules per service. This is the
+# air-gap instinct in Kubernetes vocabulary: nothing talks to anything unless named here.
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/part-of: agent-fleet
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+# Every pod may resolve DNS via kube-system (CoreDNS). Nothing else is implied.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-egress
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/part-of: agent-fleet
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+{{- range $name, $svc := .Values.services }}
+{{- if ne $svc.enabled false }}
+{{- $net := $svc.network }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-{{ $name }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ $name }}
+    app.kubernetes.io/part-of: agent-fleet
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $name }}
+  policyTypes:
+    - Ingress
+    - Egress
+  {{- if and $net $net.ingressFrom }}
+  ingress:
+    - from:
+        - podSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  {{- range $net.ingressFrom }}
+                  - {{ . }}
+                  {{- end }}
+      ports:
+        - protocol: TCP
+          port: {{ default 8080 $svc.port }}
+  {{- end }}
+  {{- if and $net (or $net.egressToServices $net.internet) }}
+  egress:
+    {{- if $net.egressToServices }}
+    - to:
+        - podSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  {{- range $net.egressToServices }}
+                  - {{ . }}
+                  {{- end }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    {{- end }}
+    {{- if $net.internet }}
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+      ports:
+        - protocol: TCP
+          port: 443
+    {{- end }}
+  {{- end }}
+{{- end }}
+{{- end }}

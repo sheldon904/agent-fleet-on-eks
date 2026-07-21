@@ -1,0 +1,21 @@
+{{- range $name, $svc := .Values.services }}
+{{- if ne $svc.enabled false }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ $name }}
+    app.kubernetes.io/part-of: agent-fleet
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: {{ $name }}
+  ports:
+    - port: {{ default 8080 $svc.port }}
+      targetPort: {{ default 8080 $svc.port }}
+      protocol: TCP
+{{- end }}
+{{- end }}

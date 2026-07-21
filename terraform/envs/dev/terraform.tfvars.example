@@ -1,0 +1,19 @@
+# Copy to terraform.tfvars and adjust. terraform.tfvars is gitignored.
+
+region          = "us-east-1"
+cluster_name    = "agent-fleet"
+cluster_version = "1.32" # set to a version EKS currently supports at apply time
+
+# Cost knobs
+single_nat_gateway  = true            # false = one NAT per AZ (HA, ~$66/mo more)
+node_instance_types = ["t3.medium"]
+node_min_size       = 1
+node_max_size       = 3
+node_desired_size   = 2
+
+# Lock the API endpoint down to your IP for a shared/long-lived cluster:
+# endpoint_public_access_cidrs = ["203.0.113.4/32"]
+
+tags = {
+  Owner = "platform-team"
+}

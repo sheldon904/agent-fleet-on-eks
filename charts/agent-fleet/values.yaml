@@ -1,0 +1,99 @@
+# agent-fleet Helm values.
+#
+# Everything is driven from the `services` map below: one Deployment, Service, ServiceAccount,
+# SecretProviderClass, and NetworkPolicy is rendered per entry. Wire the ECR registry, image
+# tags, IRSA role ARNs, and secret names from the Terraform outputs in terraform/envs/dev.
+
+# ECR registry host, e.g. 123456789012.dkr.ecr.us-east-1.amazonaws.com. Empty = local images.
+image:
+  registry: ""
+  pullPolicy: IfNotPresent
+
+# AWS region for the Secrets Store CSI provider.
+region: us-east-1
+
+# The AWS Secrets Store CSI driver + AWS provider must be installed in the cluster for this.
+# Disable for a local cluster without the driver (services then fall back to env/dev secrets).
+secretsStore:
+  enabled: true
+
+defaultResources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 250m
+    memory: 128Mi
+
+services:
+  governance-mcp:
+    image: agent-fleet/governance-mcp
+    tag: latest
+    port: 8080
+    replicas: 1
+    writableData: /data # audit log volume (root fs is read-only)
+    serviceAccount:
+      irsaRoleArn: "" # terraform output irsa_role_arns["governance-mcp"]
+    env:
+      TRUST_LADDER: '{"scheduler":["open_pr"]}'
+      AUDIT_LOG_PATH: /data/audit.log
+    secrets:
+      - awsName: agent-fleet/governance-mcp
+        fileName: hmac
+        envFileKey: GOV_HMAC_SECRET_FILE
+    network:
+      ingressFrom: [scheduler, ticket-to-pr-runner]
+
+  scheduler:
+    image: agent-fleet/scheduler
+    tag: latest
+    port: 8080
+    replicas: 1
+    serviceAccount:
+      irsaRoleArn: ""
+    env:
+      GOVERNANCE_URL: http://governance-mcp:8080
+      RUNNER_URL: http://ticket-to-pr-runner:8080
+      POLL_INTERVAL: "5"
+    secrets: []
+    network:
+      egressToServices: [governance-mcp, ticket-to-pr-runner]
+
+  ticket-to-pr-runner:
+    image: agent-fleet/ticket-to-pr-runner
+    tag: latest
+    port: 8080
+    replicas: 1
+    serviceAccount:
+      irsaRoleArn: "" # terraform output irsa_role_arns["ticket-to-pr-runner"]
+    env:
+      GOVERNANCE_URL: http://governance-mcp:8080
+      NOTIFY_URL: http://notify-bridge:8080
+      DRY_RUN: "true" # set "false" for real GitHub PRs (also provide a GITHUB_TOKEN secret)
+      BASE_BRANCH: main
+    secrets:
+      - awsName: agent-fleet/notify-hmac # shared HMAC: runner signs, notify-bridge verifies
+        fileName: notify-hmac
+        envFileKey: NOTIFY_HMAC_SECRET_FILE
+    network:
+      ingressFrom: [scheduler]
+      egressToServices: [governance-mcp, notify-bridge]
+      internet: true # GitHub API
+
+  notify-bridge:
+    image: agent-fleet/notify-bridge
+    tag: latest
+    port: 8080
+    replicas: 1
+    serviceAccount:
+      irsaRoleArn: "" # terraform output irsa_role_arns["notify-bridge"]
+    env:
+      NTFY_URL: https://ntfy.sh
+      NTFY_TOPIC: agent-fleet-demo
+    secrets:
+      - awsName: agent-fleet/notify-hmac
+        fileName: hmac
+        envFileKey: HMAC_SECRET_FILE
+    network:
+      ingressFrom: [ticket-to-pr-runner]
+      internet: true # ntfy / Telegram

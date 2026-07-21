@@ -1,0 +1,67 @@
+# Direct-backend variant: the whole fleet on plain Docker, for platform teams that support
+# Docker, Kubernetes, OR direct. Same images the Helm charts deploy.
+#
+#   GOV_HMAC_SECRET=... NOTIFY_HMAC_SECRET=... docker compose up --build
+#
+# Then enqueue a ticket:
+#   curl -XPOST localhost:8083/enqueue -d '{"id":"TCK-1","title":"demo","body":"hi"}'
+name: agent-fleet
+
+services:
+  governance-mcp:
+    build: ./governance-mcp
+    environment:
+      GOV_HMAC_SECRET: ${GOV_HMAC_SECRET:-dev-insecure-secret}
+      TRUST_LADDER: '{"scheduler":["open_pr"]}'
+      AUDIT_LOG_PATH: /data/audit.log
+    volumes:
+      - audit:/data
+    ports: ["8081:8080"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8080/healthz')"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  notify-bridge:
+    build: ./notify-bridge-go
+    environment:
+      HMAC_SECRET: ${NOTIFY_HMAC_SECRET:-dev-insecure-secret}
+      NTFY_URL: ${NTFY_URL:-https://ntfy.sh}
+      NTFY_TOPIC: ${NTFY_TOPIC:-agent-fleet-demo}
+    ports: ["8080:8080"]
+
+  ticket-to-pr-runner:
+    build: ./ticket-to-pr-runner
+    environment:
+      GOVERNANCE_URL: http://governance-mcp:8080
+      NOTIFY_URL: http://notify-bridge:8080
+      NOTIFY_HMAC_SECRET: ${NOTIFY_HMAC_SECRET:-dev-insecure-secret}
+      DRY_RUN: ${DRY_RUN:-true}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      GITHUB_REPO: ${GITHUB_REPO:-}
+    depends_on:
+      governance-mcp:
+        condition: service_healthy
+    ports: ["8082:8080"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8080/healthz')"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  scheduler:
+    build: ./scheduler
+    environment:
+      GOVERNANCE_URL: http://governance-mcp:8080
+      RUNNER_URL: http://ticket-to-pr-runner:8080
+      POLL_INTERVAL: "5"
+    depends_on:
+      governance-mcp:
+        condition: service_healthy
+      ticket-to-pr-runner:
+        condition: service_healthy
+    ports: ["8083:8080"]
+
+volumes:
+  audit:

@@ -1,0 +1,24 @@
+agent-fleet deployed to namespace {{ .Release.Namespace }}.
+
+Services:
+{{- range $name, $svc := .Values.services }}
+  - {{ $name }} (port {{ default 8080 $svc.port }})
+{{- end }}
+
+Next:
+  kubectl -n {{ .Release.Namespace }} get pods
+  kubectl -n {{ .Release.Namespace }} get networkpolicy
+
+Enqueue a ticket (port-forward the scheduler first):
+  kubectl -n {{ .Release.Namespace }} port-forward svc/scheduler 8083:8080
+  curl -XPOST localhost:8083/enqueue -d '{"id":"TCK-1","title":"demo","body":"hello"}'
+
+Watch the governance audit stream:
+  kubectl -n {{ .Release.Namespace }} logs deploy/governance-mcp -f
+
+{{- if not .Values.secretsStore.enabled }}
+
+WARNING: secretsStore.enabled is false. Secrets are not mounted; services will use insecure
+dev defaults and notify-bridge will report not-ready. Install the AWS Secrets Store CSI driver
+and set secretsStore.enabled=true for a real deployment.
+{{- end }}

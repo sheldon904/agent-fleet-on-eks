@@ -1,0 +1,5 @@
+*_test.go
+NOTES.md
+README.md
+.dockerignore
+Dockerfile

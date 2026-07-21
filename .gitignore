@@ -1,0 +1,59 @@
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+*.tfvars
+!*.tfvars.example
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+.terraform.lock.hcl
+
+# Secrets / env — never commit real values
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+kubeconfig
+*.kubeconfig
+
+# Go
+/bin/
+*.test
+*.out
+services/**/dist/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Node / JS (reference services)
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# Runtime artifacts
+audit.log
+*.audit.log
+.e2e-audit.log
+scripts/.e2e-audit.log
+rendered.yaml
+deploy/values.production.yaml
+
+# Helm
+charts/**/charts/
+*.tgz
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

@@ -1,0 +1,9 @@
+apiVersion: v2
+name: agent-fleet
+description: >-
+  Self-hosted agent fleet — governance MCP server, scheduler, ticket-to-PR runner, and Go
+  notification bridge — as hardened Kubernetes workloads with default-deny networking and
+  CSI-mounted secrets.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

@@ -1,0 +1,8 @@
+# Copy to backend.hcl, fill in from `terraform -chdir=terraform/bootstrap output backend_hcl`,
+# uncomment the backend "s3" block in versions.tf, then run:
+#   terraform init -backend-config=backend.hcl -migrate-state
+bucket         = "REPLACE-agent-fleet-tfstate"
+key            = "envs/dev/terraform.tfstate"
+region         = "us-east-1"
+dynamodb_table = "agent-fleet-tf-locks"
+encrypt        = true
