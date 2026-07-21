@@ -57,13 +57,16 @@ flowchart TB
 
 ```
 agent-fleet-on-eks/
-├── terraform/    # VPC, EKS, IAM/IRSA, ECR, Secrets Manager  (the bulk of the work)
-├── charts/       # Helm charts per service + NetworkPolicies
-├── services/     # reference services + the new Go notification bridge
-├── .github/      # Actions: test → build → push ECR → helm upgrade (approval-gated)
-├── runbook/      # the customer-facing deployment runbook (the FDE artifact)
-├── compliance/   # SOC 2 control → Trust Services Criteria mapping
-└── PLAN.md       # phased build plan
+├── terraform/     # VPC, EKS, IAM/IRSA, ECR, Secrets Manager  (the bulk of the work)
+├── charts/        # single values-driven Helm chart for all services + NetworkPolicies
+├── services/      # reference services + the Go notification bridge
+├── .github/       # Actions: test → build → push ECR → helm upgrade (approval-gated)
+├── runbook/       # the customer-facing deployment runbook (the FDE artifact)
+├── compliance/    # SOC 2 control → Trust Services Criteria mapping
+├── deploy/        # per-environment Helm values (production values kept untracked)
+├── scripts/       # e2e_local.py — the full trust flow proven locally, no AWS needed
+├── PLAN.md        # phased build plan
+└── VALIDATION.md  # what's proven locally vs. what needs a live account
 ```
 
 ## Cost (read before `terraform apply`)
@@ -91,5 +94,13 @@ terraform destroy
 
 ## Status
 
-Scaffolding + plan committed. See [`PLAN.md`](./PLAN.md) for phase-by-phase progress and
-[`runbook/`](./runbook/) for the deployment procedure as it's written.
+Build complete through Phase 5 and validated locally end to end. The Terraform foundation,
+Helm workloads with default-deny NetworkPolicies, the Go notification bridge, the CI/CD
+pipeline with an approval gate, and the SOC 2 mapping + runbook are all in place. Phase 6 is
+proven locally — `python scripts/e2e_local.py` drives one ticket through the whole trust flow
+(scheduler → governance token → runner → PR → signed notification, all on the audit stream) —
+with the timed clean-room install and the on-cluster real PR pending a live AWS account.
+
+See [`PLAN.md`](./PLAN.md) for phase-by-phase progress, [`VALIDATION.md`](./VALIDATION.md) for
+exactly what's verified versus what needs a live account, and [`runbook/`](./runbook/) for the
+deployment procedure.

@@ -6,9 +6,10 @@ Maps each existing control to the SOC 2 **Trust Services Criteria** it supports.
 [`../PLAN.md`](../PLAN.md#phase-5--soc-2-mapping--the-runbook-weekend-3-closes-gap-4--the-fde-artifact)
 Phase 5.
 
-## Planned file
+## The mapping
 
-`soc2-control-mapping.md` — a table plus plain-English implementation + evidence notes.
+[`soc2-control-mapping.md`](./soc2-control-mapping.md) — a table plus plain-English
+implementation + evidence notes.
 
 | Control (as built here) | Trust Services Criteria it supports |
 |---|---|
@@ -18,8 +19,8 @@ Phase 5.
 | Network isolation (default-deny NetworkPolicy) | CC6.6, CC6.7 |
 | Secret rotation (Secrets Manager) | CC6.1, CC6.7 |
 
-Each row in the final file gets: *how it's implemented here*, *where in the repo*, and *what an
-auditor would sample as evidence*.
+Each row gives: *how it's implemented here*, *where in the repo*, and *what an auditor would
+sample as evidence*.
 
 > Scope note: this is a **control-to-criteria mapping** to demonstrate security literacy — it
 > is not an assertion that the reference deployment is SOC 2 certified.

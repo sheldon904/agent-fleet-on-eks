@@ -2,26 +2,33 @@
 
 The agent fleet's services. See [`../PLAN.md`](../PLAN.md) Phases 2 & 3.
 
-## Planned layout
+## Layout
 
 ```
 services/
 ├── governance-mcp/        # governance MCP server (audit stream, action tokens, trust ladder)
 ├── scheduler/             # job scheduler
 ├── ticket-to-pr-runner/   # ticket → PR pipeline
-├── notify-bridge-go/      # NEW: ntfy/Telegram bridge, rewritten in Go (Gap 5)
+├── notify-bridge-go/      # ntfy/Telegram bridge, rewritten in Go (Gap 5)
 └── docker-compose.yml     # direct-backend variant (Docker), mirrors the K8s stack
 ```
 
-## Existing services — import vs. scaffold (Phase 0 decision)
+## Reference stand-ins vs. the Go port
 
-This repo starts empty. Default plan is **(B) scaffold faithful reference stand-ins** for the
-three existing services so the whole system runs and the runbook is real; swap in production
-code later if available. See [`../PLAN.md`](../PLAN.md#assumption-to-confirm-phase-0-decision).
+The three Python services (`governance-mcp`, `scheduler`, `ticket-to-pr-runner`) are faithful
+reference stand-ins — stdlib-only implementations that exhibit the real behaviors (append-only
+audit stream, one-shot action tokens, default-deny trust ladder, ticket→PR flow) so the whole
+system runs and the runbook is real. Production code can be swapped in later without changing
+the charts, IRSA wiring, or NetworkPolicies. See
+[`../PLAN.md`](../PLAN.md#assumption-to-confirm-phase-0-decision).
+
+Each service ships unit tests (`python -m unittest` from its directory), and
+[`../scripts/e2e_local.py`](../scripts/e2e_local.py) drives one ticket through all of them end
+to end. `docker-compose.yml` runs the same stack locally.
 
 ## notify-bridge-go — the Go port (Gap 5)
 
-Fresh Go implementation regardless of the decision above:
+A fresh Go implementation (the only service written from scratch rather than stood in):
 
 - HTTP server: `/healthz`, `/readyz`, `/notify`.
 - **Goroutine fan-out** to ntfy + Telegram concurrently.
