@@ -15,7 +15,7 @@ Phase 5.
 | [`04-failure-modes.md`](./04-failure-modes.md) | Crashloop, image pull, IRSA/secret failures, NetworkPolicy lockout, node pressure — symptom → diagnosis → fix |
 | [`05-rollback.md`](./05-rollback.md) | `helm rollback`, image pinning, Terraform state recovery |
 | [`06-security-review-faq.md`](./06-security-review-faq.md) | The questions an enterprise security team asks, with answers pointing back into the repo |
-| [`direct-backend.md`](./direct-backend.md) | Running the same stack on plain **Docker Compose / systemd** , for platform teams not standardised on Kubernetes |
+| [`direct-backend.md`](./direct-backend.md) | Running the same stack on plain **Docker Compose / systemd**, for platform teams not standardised on Kubernetes |
 
 ## Bar to clear
 
