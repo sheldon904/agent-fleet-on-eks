@@ -21,7 +21,7 @@ you do nothing.
 | kubectl | ≥ 1.29 | `kubectl version --client` |
 | Helm | ≥ 3.12 | `helm version` |
 | Docker | any recent | `docker version` |
-| Go | 1.23 (only to build/test the bridge locally) | `go version` |
+| Go | 1.26.10+ (only to build/test the bridge locally) | `go version` |
 
 ## Cost — read this
 

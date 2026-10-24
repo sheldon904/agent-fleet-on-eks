@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ---- build ----
-FROM golang:1.23 AS build
+FROM golang:1.26 AS build
 WORKDIR /src
 # No third-party deps: go.mod alone is enough and this layer caches well.
 COPY go.mod ./
